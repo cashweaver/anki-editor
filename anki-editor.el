@@ -79,6 +79,11 @@ See https://apps.ankiweb.net/docs/manual.html#latex-conflicts."
   "If nil, tags of entries won't be counted as Anki tags."
   :type 'boolean)
 
+(defcustom anki-editor-remove-single-paragraph-tags
+  nil
+  "If nil, single paragraph tags won't be stripped from formated fields."
+  :type 'boolean)
+
 (defcustom anki-editor-protected-tags
   '("marked" "leech")
   "A list of tags that won't be deleted from Anki even though
@@ -390,14 +395,35 @@ The implementation is borrowed and simplified from ox-html."
 
            (t (throw 'giveup nil)))))
       (funcall oldfun link desc info)))
+(defun anki-editor--remove-single-paragraph-tags (html)
+  "Return HTML with the wrapping <p> tag removed if there is only one <p> tag.
+
+See https://www.emacswiki.org/emacs/MultilineRegexp"
+  (let* ((multiline-two-p-regexp
+          "<p>[\n]?\\(.*\\(?:\n.*\\)*?\\)[\n]?<p>")
+         (multiline-one-p-regexp
+          "<p>[\n]?\\(.*\\(?:\n.*\\)*?\\)[\n]?</p>")
+         (output
+          (cond
+           ((not anki-editor-remove-single-paragraph-tags)
+            html)
+           ((not (string-match-p multiline-one-p-regexp html))
+            html)
+           ((string-match-p multiline-two-p-regexp html)
+            html)
+           ((string-match multiline-one-p-regexp html)
+            (match-string 1 html))
+           (t html))))
+    output))
 
 (defun anki-editor--export-string (src fmt)
   (cl-ecase fmt
     ('nil src)
-    ('t (or (org-export-string-as src
-                                  anki-editor--ox-anki-html-backend
-                                  t
-                                  anki-editor--ox-export-ext-plist)
+    ('t (or (anki-editor--remove-single-paragraph-tags
+             (org-export-string-as src
+                                   anki-editor--ox-anki-html-backend
+                                   t
+                                   anki-editor--ox-export-ext-plist))
             ;; 8.2.10 version of
             ;; `org-export-filter-apply-functions'
             ;; returns nil for an input of empty string,
