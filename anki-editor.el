@@ -689,14 +689,15 @@ Return a list of cons of (FIELD-NAME . FIELD-CONTENT)."
              ;; contents-begin includes drawers and scheduling data,
              ;; which we'd like to ignore, here we skip these
              ;; elements and reset contents-begin.
-             for begin = (cl-loop for eoh = (org-element-property :contents-begin element)
-                                  then (org-element-property :end subelem)
-                                  for subelem = (progn
-                                                  (goto-char eoh)
-                                                  (org-element-context))
-                                  while (memq (org-element-type subelem)
-                                              '(drawer planning property-drawer))
-                                  finally return (org-element-property :begin subelem))
+             for begin = (when (org-element-property :contents-begin element)
+                           (cl-loop for eoh = (org-element-property :contents-begin element)
+                                    then (org-element-property :end subelem)
+                                    for subelem = (progn
+                                                    (goto-char eoh)
+                                                    (org-element-context))
+                                    while (memq (org-element-type subelem)
+                                                '(drawer planning property-drawer))
+                                    finally return (org-element-property :begin subelem)))
              for end = (org-element-property :contents-end element)
              for raw = (or (and begin
                                 end
