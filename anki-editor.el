@@ -237,7 +237,7 @@ request directly, it simply queues the request."
 (defun anki-editor-api--note (note)
   "Convert NOTE to the form that AnkiConnect accepts."
   (list
-   :id (string-to-number (or (anki-editor-note-id note) "0"))
+   :id (anki-editor-note-id note)
    :deckName (anki-editor-note-deck note)
    :modelName (anki-editor-note-model note)
    :fields (anki-editor-note-fields note)
@@ -653,7 +653,8 @@ Where the subtree is created depends on PREFIX."
     (unless deck (error "Missing deck"))
     (unless note-type (error "Missing note type"))
 
-    (make-anki-editor-note :id note-id
+    (make-anki-editor-note :id (when note-id
+                                 (string-to-number (or note-id "0")))
                            :model note-type
                            :deck deck
                            :tags tags
@@ -854,7 +855,7 @@ matching non-empty `ANKI_FAILURE_REASON' properties."
 
 (defun anki-editor-delete-notes (noteids)
   "Delete notes in NOTEIDS or the note at point."
-  (interactive (list (list (org-entry-get nil anki-editor-prop-note-id))))
+  (interactive (list (list (string-to-number (org-entry-get nil anki-editor-prop-note-id)))))
   (when (or (not (called-interactively-p 'interactive))
             (yes-or-no-p (format "Do you really want to delete note %s? The deletion can't be undone. " (nth 0 noteids))))
     (anki-editor-api-call-result 'deleteNotes
