@@ -395,26 +395,30 @@ The implementation is borrowed and simplified from ox-html."
 
            (t (throw 'giveup nil)))))
       (funcall oldfun link desc info)))
-(defun anki-editor--remove-single-paragraph-tags (html)
+
+(cl-defun anki-editor--remove-single-paragraph-tags (html)
   "Return HTML with the wrapping <p> tag removed if there is only one <p> tag.
 
 See https://www.emacswiki.org/emacs/MultilineRegexp"
-  (let* ((multiline-two-p-regexp
-          "<p>[\n]?\\(.*\\(?:\n.*\\)*?\\)[\n]?<p>")
-         (multiline-one-p-regexp
-          "<p>[\n]?\\(.*\\(?:\n.*\\)*?\\)[\n]?</p>")
-         (output
-          (cond
-           ((not anki-editor-remove-single-paragraph-tags)
-            html)
-           ((not (string-match-p multiline-one-p-regexp html))
-            html)
-           ((string-match-p multiline-two-p-regexp html)
-            html)
-           ((string-match multiline-one-p-regexp html)
-            (match-string 1 html))
-           (t html))))
-    output))
+  (when (not anki-editor-remove-single-paragraph-tags)
+    (return-from
+        anki-editor--remove-single-paragraph-tags
+      html))
+  (let ((p-tag-count
+         (with-temp-buffer
+           (insert html)
+           (goto-char (point-min))
+           (how-many "<p>"))))
+    (when (> p-tag-count 1)
+      (return-from
+          anki-editor--remove-single-paragraph-tags
+        html))
+    (with-temp-buffer
+      (insert html)
+      (goto-char (point-min))
+      (while (re-search-forward "</?p>" nil t)
+        (replace-match ""))
+      (buffer-string))))
 
 (defun anki-editor--export-string (src fmt)
   (cl-ecase fmt
@@ -671,7 +675,7 @@ Where the subtree is created depends on PREFIX."
 (defun anki-editor--entry-get-multivalued-property-with-inheritance (pom property)
   "Return a list of values in a multivalued property with inheritance."
   (let* ((value (org-entry-get pom property t))
-	     (values (and value (split-string value))))
+	 (values (and value (split-string value))))
     (mapcar #'org-entry-restore-space values)))
 
 (defun anki-editor--build-fields ()
