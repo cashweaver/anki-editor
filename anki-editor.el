@@ -249,6 +249,9 @@ request directly, it simply queues the request."
 (defun anki-editor-api--store-media-file (path)
   "Store media file for PATH, which is an absolute file name.
 The result is the path to the newly stored media file."
+  (message "anki-editor-api--store-media-file")
+  (message (s-lex-format
+            "path: ${path}"))
   (let* ((bytes (with-temp-buffer
                   (insert-file-contents-literally path)
                   (buffer-string)))
@@ -335,6 +338,7 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
 (defun anki-editor--ox-html-link (oldfun link desc info)
   "When LINK is a link to local file, transcodes it to html and stores the target file to Anki, otherwise calls OLDFUN for help.
 The implementation is borrowed and simplified from ox-html."
+  (message "!!!!!!!!!!!!!!!!!!!!!!!!!! anki-editor--ox-html-link")
   (or (catch 'giveup
         (unless (plist-get info :anki-editor-mode)
           (throw 'giveup nil))
@@ -409,30 +413,111 @@ See https://www.emacswiki.org/emacs/MultilineRegexp"
            (insert html)
            (goto-char (point-min))
            (how-many "<p>"))))
-    (when (> p-tag-count 1)
+    (if t
+        ;; (= p-tag-count 1)
+        (anki-editor--replace-p-tags-with-breaks
+         html)
       (return-from
           anki-editor--remove-single-paragraph-tags
-        html))
+        html))))
+
+(defun anki-editor--replace-p-tags-with-breaks (text)
+  "Return TEXT with <p> tags replaced with <br> tags."
+  (let* ((break-tag
+          "<br>")
+         (last-newline-in-string-regexp
+          ;; See http://xahlee.info/emacs/emacs/emacs_regex_begin_end_line_string.html
+          (s-lex-format
+           "${break-tag}\\'"))
+         (text-with-replacement
+          (replace-regexp-in-string
+           "\n+$"
+           ""
+           (anki-editor--replace-html-tag
+            text
+            "p"
+            break-tag)
+           )))
+    (replace-regexp-in-string
+     last-newline-in-string-regexp
+     ""
+     text-with-replacement)))
+
+(defun anki-editor--replace-html-tag (text tag-name replacement)
+  "Return TEXT after removing all </?TAG-NAME> occurrences and replacing closing tags with REPLACEMENT."
+  (let ((closing-html-tag-regexp
+         (s-lex-format
+          "</${tag-name}>"))
+        (opening-html-tag-regexp
+         (s-lex-format
+          "<${tag-name}>")))
+
     (with-temp-buffer
-      (insert html)
-      (goto-char (point-min))
-      (while (re-search-forward "</?p>" nil t)
-        (replace-match ""))
+      (insert
+       text)
+
+      (goto-char
+       (point-min))
+      (while (re-search-forward
+              closing-html-tag-regexp
+              nil
+              t)
+        (replace-match
+         replacement))
+
+      (goto-char
+       (point-min))
+      (while (re-search-forward
+              opening-html-tag-regexp
+              nil
+              t)
+        (replace-match
+         ""))
+
       (buffer-string))))
+
+(defun anki-editor--reduce-newlines (text)
+  "Return TEXT without leading, trailing, or triple newlines."
+  (replace-regexp-in-string
+   ;; See http://xahlee.info/emacs/emacs/emacs_regex_begin_end_line_string.html
+   "\n+\\'"
+   ""
+   (replace-regexp-in-string
+    ;; See http://xahlee.info/emacs/emacs/emacs_regex_begin_end_line_string.html
+    "\\`\n+"
+    ""
+    (replace-regexp-in-string
+     "<br>\n"
+     "<br>"
+     text))))
+
+(defun anki-editor--message (text &optional force)
+  "Message the TEXT; optionally FORCE."
+  (if (or force
+          anki-editor--debug)
+      (message
+       (let ((print-escape-newlines t))
+         (prin1-to-string
+          text
+          ))))
+  text)
 
 (defun anki-editor--export-string (src fmt)
   (cl-ecase fmt
     ('nil src)
-    ('t (or (anki-editor--remove-single-paragraph-tags
-             (org-export-string-as src
-                                   anki-editor--ox-anki-html-backend
-                                   t
-                                   anki-editor--ox-export-ext-plist))
-            ;; 8.2.10 version of
-            ;; `org-export-filter-apply-functions'
-            ;; returns nil for an input of empty string,
-            ;; which will cause AnkiConnect to fail
-            ""))))
+    ('t (or
+         (anki-editor--reduce-newlines
+          (anki-editor--remove-single-paragraph-tags
+           (org-export-string-as src
+                                 anki-editor--ox-anki-html-backend
+                                 t
+                                 anki-editor--ox-export-ext-plist))
+          )
+         ;; 8.2.10 version of
+         ;; `org-export-filter-apply-functions'
+         ;; returns nil for an input of empty string,
+         ;; which will cause AnkiConnect to fail
+         ""))))
 
 
 ;;; Core primitives
@@ -773,6 +858,21 @@ Return a list of cons of (FIELD-NAME . FIELD-CONTENT)."
   (message "Scanning notes %d (%s@%d), wait a moment..."
            (length anki-editor--note-markers) (buffer-name) (point))
   (push (point-marker) anki-editor--note-markers))
+
+(defun anki-editor-push-note-at-point ()
+  "Push note at point to Anki."
+  (interactive)
+  (let ((note
+         (condition-case nil
+             (anki-editor-note-at-point)
+           (t
+            ;; Attempt one heading up if we fail the first time.
+            (save-excursion
+              (outline-up-heading
+               1)
+              (anki-editor-note-at-point))))))
+    (anki-editor--push-note
+     note)))
 
 (defun anki-editor-push-notes (&optional scope match)
   "Build notes from headings that match MATCH within SCOPE and push them to Anki.
