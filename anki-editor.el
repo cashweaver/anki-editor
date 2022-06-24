@@ -5,7 +5,7 @@
 ;; Description: Make Anki Cards in Org-mode
 ;; Author: Lei Tan
 ;; Version: 0.3.3
-;; Package-Requires: ((emacs "25.1"))
+;; Package-Requires: ((emacs "25.1") (s "1.12.0")
 ;; URL: https://github.com/louietan/anki-editor
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -63,6 +63,7 @@
 (require 'org-element)
 (require 'ox)
 (require 'ox-html)
+(require 's)
 
 (defgroup anki-editor nil
   "Customizations for anki-editor."
@@ -249,9 +250,6 @@ request directly, it simply queues the request."
 (defun anki-editor-api--store-media-file (path)
   "Store media file for PATH, which is an absolute file name.
 The result is the path to the newly stored media file."
-  (message "anki-editor-api--store-media-file")
-  (message (s-lex-format
-            "path: ${path}"))
   (let* ((bytes (with-temp-buffer
                   (insert-file-contents-literally path)
                   (buffer-string)))
