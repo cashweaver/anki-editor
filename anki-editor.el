@@ -994,12 +994,43 @@ When note heading is not provided, it is used as the first field."
   (anki-editor-cloze (region-beginning) (region-end) arg hint))
 
 (defun anki-editor-cloze-dwim (&optional arg hint)
-  "Cloze current active region or a word the under the cursor"
+  "Cloze current active region, link, or a word the under the cursor."
   (interactive "p\nsHint (optional): ")
   (cond
-   ((region-active-p) (anki-editor-cloze (region-beginning) (region-end) arg hint))
-   ((thing-at-point 'word) (let ((bounds (bounds-of-thing-at-point 'word)))
-                             (anki-editor-cloze (car bounds) (cdr bounds) arg hint)))
+   ((region-active-p)
+    (anki-editor-cloze
+     (region-beginning)
+     (region-end)
+     arg
+     hint))
+   ((org-in-regexp
+     org-link-bracket-re)
+    (let* ((context
+            (org-element-context))
+           (begin
+            (org-element-property
+             :begin
+             context))
+           (end
+            (- (org-element-property
+                :end
+                context)
+               1)))
+      (anki-editor-cloze
+       begin
+       end
+       arg
+       hint)))
+   ((thing-at-point
+     'word)
+    (let ((bounds
+           (bounds-of-thing-at-point
+            'word)))
+      (anki-editor-cloze
+       (car bounds)
+       (cdr bounds)
+       arg
+       hint)))
    (t (error "Nothing to create cloze from"))))
 
 (defun anki-editor-cloze (begin end arg hint)
