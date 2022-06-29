@@ -998,39 +998,37 @@ When note heading is not provided, it is used as the first field."
   (interactive "p\nsHint (optional): ")
   (cond
    ((region-active-p)
-    (anki-editor-cloze
-     (region-beginning)
-     (region-end)
-     arg
-     hint))
-   ((org-in-regexp
-     org-link-bracket-re)
-    (let* ((context
-            (org-element-context))
-           (begin
-            (org-element-property
-             :begin
-             context))
-           (end
-            (- (org-element-property
-                :end
-                context)
-               1)))
-      (anki-editor-cloze
-       begin
-       end
-       arg
-       hint)))
-   ((thing-at-point
-     'word)
-    (let ((bounds
-           (bounds-of-thing-at-point
-            'word)))
-      (anki-editor-cloze
-       (car bounds)
-       (cdr bounds)
-       arg
-       hint)))
+    (anki-editor-cloze (region-beginning)
+                       (region-end)
+                       arg
+                       hint))
+   ((org-in-regexp org-link-bracket-re)
+    (let* ((context (org-element-context))
+           (begin (org-element-property
+                   :begin
+                   context))
+           (end (let ((end (org-element-property
+                            :end
+                            context))
+                      (space
+                       ?\ ))
+                  (if (= (char-before
+                          end)
+                         space)
+                      (- end
+                         1)
+                    end))))
+      (anki-editor-cloze begin
+                         end
+                         arg
+                         hint)))
+   ((thing-at-point 'word)
+    (let ((bounds (bounds-of-thing-at-point
+                   'word)))
+      (anki-editor-cloze (car bounds)
+                         (cdr bounds)
+                         arg
+                         hint)))
    (t (error "Nothing to create cloze from"))))
 
 (defun anki-editor-cloze (begin end arg hint)
