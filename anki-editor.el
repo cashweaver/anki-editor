@@ -500,22 +500,23 @@ See https://www.emacswiki.org/emacs/MultilineRegexp"
   text)
 
 (defun anki-editor--export-string (src fmt)
-  (cl-ecase fmt
-    ('nil src)
-    ('t (or
-         (anki-editor--reduce-newlines
-          (anki-editor--remove-single-paragraph-tags
-           (org-export-string-as src
-                                 anki-editor--ox-anki-html-backend
-                                 t
-                                 anki-editor--ox-export-ext-plist))
-          )
-         ;; 8.2.10 version of
-         ;; `org-export-filter-apply-functions'
-         ;; returns nil for an input of empty string,
-         ;; which will cause AnkiConnect to fail
-         ""))))
-
+  (if (length= src 0)
+      src
+    (cl-ecase fmt
+      ('nil src)
+      ('t (or
+           (anki-editor--reduce-newlines
+            (anki-editor--remove-single-paragraph-tags
+             (org-export-string-as src
+                                   anki-editor--ox-anki-html-backend
+                                   t
+                                   anki-editor--ox-export-ext-plist))
+            )
+           ;; 8.2.10 version of
+           ;; `org-export-filter-apply-functions'
+           ;; returns nil for an input of empty string,
+           ;; which will cause AnkiConnect to fail
+           "")))))
 
 ;;; Core primitives
 
