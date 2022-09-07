@@ -336,7 +336,6 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
 (defun anki-editor--ox-html-link (oldfun link desc info)
   "When LINK is a link to local file, transcodes it to html and stores the target file to Anki, otherwise calls OLDFUN for help.
 The implementation is borrowed and simplified from ox-html."
-  (message "!!!!!!!!!!!!!!!!!!!!!!!!!! anki-editor--ox-html-link")
   (or (catch 'giveup
         (unless (plist-get info :anki-editor-mode)
           (throw 'giveup nil))
